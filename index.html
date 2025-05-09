@@ -1,44 +1,4 @@
-// Handle barcode scanner input
-        // Most barcode scanners add an Enter key press after scanning
-        document.addEventListener('keydown', function(e) {
-            // Only process if there's active input focus
-            const activeElement = document.activeElement;
-            
-            if (e.key === 'Enter') {
-                if (activeElement === coverInput) {
-                    e.preventDefault(); // Prevent form submission
-                    
-                    // Process the cover input
-                    const digits = coverInput.value.replace(/\D/g, '');
-                    if (digits.length >= 13) {
-                        coverInput.value = digits.substring(0, 13);
-                        
-                        // Clear blockInput to prevent data carryover
-                        blockInput.value = '';
-                        
-                        // Move focus to blockInput
-                        setTimeout(function() {
-                            blockInput.focus();
-                            blockInput.classList.add('focus-input');
-                            coverInput.classList.remove('focus-input');
-                        }, 100);
-                    }
-                } else if (activeElement === blockInput) {
-                    e.preventDefault(); // Prevent form submission
-                    
-                    // Process the block input
-                    const digits = blockInput.value.replace(/\D/g, '');
-                    if (digits.length >= 13) {
-                        blockInput.value = digits.substring(0, 13);
-                        
-                        // If both inputs have values, perform comparison
-                        if (coverInput.value && blockInput.value) {
-                            compareBarcodesHandler();
-                        }
-                    }
-                }
-            }
-        });<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -58,10 +18,10 @@
             font-family: monospace;
             font-size: 1.2rem;
         }
-        .barcode-input.cover {
+        .barcode-input.code39 {
             border-color: #0d6efd;
         }
-        .barcode-input.block {
+        .barcode-input.datamatrix {
             border-color: #198754;
         }
         .comparison-box {
@@ -88,13 +48,13 @@
             <div class="col-md-6 mb-3">
                 <div class="card h-100">
                     <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Scan Cover</h5>
+                        <h5 class="mb-0">Code 39 Input</h5>
                     </div>
                     <div class="card-body">
                         <div class="form-group mb-3">
-                            <label for="coverInput">Cover DataMatrix:</label>
-                            <input type="text" id="coverInput" class="form-control barcode-input cover focus-input" maxlength="13" autocomplete="off">
-                            <div class="form-text">Scan the DataMatrix barcode from the cover</div>
+                            <label for="code39Input">Code 39 Value (13 digits):</label>
+                            <input type="text" id="code39Input" class="form-control barcode-input code39 focus-input" maxlength="13" pattern="[0-9]{13}" autocomplete="off">
+                            <div class="form-text">Scan or type the 13-digit Code 39 barcode</div>
                         </div>
                     </div>
                 </div>
@@ -102,13 +62,13 @@
             <div class="col-md-6 mb-3">
                 <div class="card h-100">
                     <div class="card-header bg-success text-white">
-                        <h5 class="mb-0">Scan Book Block</h5>
+                        <h5 class="mb-0">DataMatrix Input</h5>
                     </div>
                     <div class="card-body">
                         <div class="form-group mb-3">
-                            <label for="blockInput">Book Block DataMatrix:</label>
-                            <input type="text" id="blockInput" class="form-control barcode-input block" maxlength="13" autocomplete="off">
-                            <div class="form-text">Scan the DataMatrix barcode from the book block</div>
+                            <label for="datamatrixInput">DataMatrix Value:</label>
+                            <input type="text" id="datamatrixInput" class="form-control barcode-input datamatrix" autocomplete="off">
+                            <div class="form-text">First 13 digits will be used for comparison</div>
                         </div>
                     </div>
                 </div>
@@ -120,8 +80,8 @@
                 <div id="match-indicator" class="alert text-center py-3 mb-4" role="alert"></div>
                 <div class="alert alert-info" role="alert" id="instruction-alert">
                     <h4 class="alert-heading">Instructions:</h4>
-                    <p>1. Scan the DataMatrix barcode from the book cover</p>
-                    <p>2. Scan the DataMatrix barcode from the book block</p>
+                    <p>1. Scan or enter the Code 39 barcode (13 digits)</p>
+                    <p>2. Scan or enter the DataMatrix barcode</p>
                     <p>3. The comparison will happen automatically after both barcodes are entered</p>
                 </div>
             </div>
@@ -131,7 +91,7 @@
             <div class="col-12">
                 <div class="d-flex justify-content-between">
                     <button id="resetBtn" class="btn btn-secondary">Reset</button>
-                    <button id="focusCoverBtn" class="btn btn-outline-primary">Focus Cover Input</button>
+                    <button id="focusCode39Btn" class="btn btn-outline-primary">Focus Code 39</button>
                 </div>
             </div>
         </div>
@@ -139,107 +99,127 @@
 
     <script>
         // Get references to input elements
-        const coverInput = document.getElementById('coverInput');
-        const blockInput = document.getElementById('blockInput');
+        const code39Input = document.getElementById('code39Input');
+        const datamatrixInput = document.getElementById('datamatrixInput');
         const resetBtn = document.getElementById('resetBtn');
-        const focusCoverBtn = document.getElementById('focusCoverBtn');
+        const focusCode39Btn = document.getElementById('focusCode39Btn');
         
-        // Set initial focus to Cover input
+        // Set initial focus to Code 39 input
         window.onload = function() {
-            coverInput.focus();
+            code39Input.focus();
         };
         
-        // Clear field on focus/click
-        coverInput.addEventListener('focus', function() {
+        // Clear field on focus/click and ensure digit-only input for Code 39
+        code39Input.addEventListener('focus', function() {
             this.value = '';
             hideResult();
             resetInputHighlighting();
-            coverInput.classList.add('focus-input');
-            blockInput.classList.remove('focus-input');
+            code39Input.classList.add('focus-input');
+            datamatrixInput.classList.remove('focus-input');
         });
         
-        blockInput.addEventListener('focus', function() {
-            this.value = '';
-            hideResult();
-            resetInputHighlighting();
-            blockInput.classList.add('focus-input');
-            coverInput.classList.remove('focus-input');
-        });
-        
-        // Only minimal input handling here - main processing in keydown event
-        coverInput.addEventListener('input', function() {
-            if (this.value.length === 1) {
-                hideResult();
-                resetInputHighlighting();
-            }
-        });
-        
-        blockInput.addEventListener('input', function() {
-            if (this.value.length === 1) {
-                hideResult();
-                resetInputHighlighting();
-            }
-        });
-        
-        // Also process Enter key in input fields (for manual entry)
-        coverInput.addEventListener('keyup', function(e) {
-            if (e.key === 'Enter') {
-                // Already handled by the document keydown event
+        code39Input.addEventListener('keypress', function(e) {
+            const char = String.fromCharCode(e.keyCode || e.which);
+            if (!/^\d$/.test(char)) {
                 e.preventDefault();
             }
         });
         
-        blockInput.addEventListener('keyup', function(e) {
-            if (e.key === 'Enter') {
-                // Already handled by the document keydown event
-                e.preventDefault();
+        datamatrixInput.addEventListener('focus', function() {
+            this.value = '';
+            hideResult();
+            resetInputHighlighting();
+            datamatrixInput.classList.add('focus-input');
+            code39Input.classList.remove('focus-input');
+        });
+        
+        // Handle input events for Code 39
+        code39Input.addEventListener('input', function() {
+            // Clear previous result when entering a new Code 39 code
+            if (this.value.length === 1) {
+                hideResult();
+                resetInputHighlighting();
+            }
+            
+            // If the Code 39 has exactly 13 digits, move to DataMatrix input
+            if (this.value.length === 13 && /^\d{13}$/.test(this.value)) {
+                datamatrixInput.focus();
+                datamatrixInput.classList.add('focus-input');
+                code39Input.classList.remove('focus-input');
+            }
+        });
+        
+        // Handle input events for DataMatrix
+        datamatrixInput.addEventListener('input', function() {
+            // Clear previous result when entering a new DataMatrix code
+            if (this.value.length === 1) {
+                hideResult();
+                resetInputHighlighting();
+            }
+            
+            // If both inputs have values, perform comparison
+            if (code39Input.value && datamatrixInput.value) {
+                compareBarcodesHandler();
+            }
+        });
+        
+        // Also perform comparison when Enter is pressed in either input field
+        code39Input.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter' && datamatrixInput.value) {
+                compareBarcodesHandler();
+            }
+        });
+        
+        datamatrixInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter' && code39Input.value) {
+                compareBarcodesHandler();
             }
         });
         
         // Reset button functionality
         resetBtn.addEventListener('click', function() {
-            coverInput.value = '';
-            blockInput.value = '';
+            code39Input.value = '';
+            datamatrixInput.value = '';
             hideResult();
-            coverInput.focus();
-            coverInput.classList.add('focus-input');
-            blockInput.classList.remove('focus-input');
+            code39Input.focus();
+            code39Input.classList.add('focus-input');
+            datamatrixInput.classList.remove('focus-input');
             resetInputHighlighting();
         });
         
-        // Focus Cover button functionality
-        focusCoverBtn.addEventListener('click', function() {
-            coverInput.focus();
-            coverInput.classList.add('focus-input');
-            blockInput.classList.remove('focus-input');
+        // Focus Code 39 button functionality
+        focusCode39Btn.addEventListener('click', function() {
+            code39Input.focus();
+            code39Input.classList.add('focus-input');
+            datamatrixInput.classList.remove('focus-input');
         });
         
         function compareBarcodesHandler() {
-            const coverValue = coverInput.value.trim();
-            const blockValue = blockInput.value.trim();
+            const code39Value = code39Input.value.trim();
+            const datamatrixValue = datamatrixInput.value.trim();
             
             // Validate inputs
-            if (!coverValue || !blockValue) {
+            if (!code39Value || !datamatrixValue) {
                 return; // Don't show any result if both fields aren't filled
             }
             
-            // Extract the first 13 digits from both DataMatrix codes
-            const coverFirst13 = coverValue.replace(/\D/g, '').substring(0, 13);
-            const blockFirst13 = blockValue.replace(/\D/g, '').substring(0, 13);
-            
-            // Ensure we have at least 13 digits in both barcodes
-            if (coverFirst13.length < 13) {
-                showResult(false, "Cover barcode must contain at least 13 digits");
+            // Validate Code 39 input (should be exactly 13 digits)
+            if (!/^\d{13}$/.test(code39Value)) {
+                showResult(false, "Code 39 must be exactly 13 digits");
                 return;
             }
             
-            if (blockFirst13.length < 13) {
-                showResult(false, "Book Block barcode must contain at least 13 digits");
+            // Extract the first 13 digits from the DataMatrix
+            const datamatrixFirst13 = datamatrixValue.replace(/\D/g, '').substring(0, 13);
+            
+            // Ensure we have at least a 13-digit string from DataMatrix
+            if (datamatrixFirst13.length < 13) {
+                showResult(false, "DataMatrix must contain at least 13 digits");
                 return;
             }
             
             // Compare the values
-            const isMatch = coverFirst13 === blockFirst13;
+            const isMatch = code39Value === datamatrixFirst13;
             
             // Show the result
             showResult(isMatch, isMatch ? 
@@ -270,32 +250,32 @@
         
         function highlightInputs(isMatch) {
             // Remove previous validation classes
-            coverInput.classList.remove('is-valid', 'is-invalid');
-            blockInput.classList.remove('is-valid', 'is-invalid');
+            code39Input.classList.remove('is-valid', 'is-invalid');
+            datamatrixInput.classList.remove('is-valid', 'is-invalid');
             
             // Add appropriate validation classes
             if (isMatch) {
-                coverInput.classList.add('is-valid');
-                blockInput.classList.add('is-valid');
+                code39Input.classList.add('is-valid');
+                datamatrixInput.classList.add('is-valid');
             } else {
-                coverInput.classList.add('is-invalid');
-                blockInput.classList.add('is-invalid');
+                code39Input.classList.add('is-invalid');
+                datamatrixInput.classList.add('is-invalid');
             }
         }
         
         function resetInputHighlighting() {
-            coverInput.classList.remove('is-valid', 'is-invalid');
-            blockInput.classList.remove('is-valid', 'is-invalid');
+            code39Input.classList.remove('is-valid', 'is-invalid');
+            datamatrixInput.classList.remove('is-valid', 'is-invalid');
         }
         
         function resetForNextScan() {
-            coverInput.value = '';
-            blockInput.value = '';
+            code39Input.value = '';
+            datamatrixInput.value = '';
             hideResult();
             resetInputHighlighting();
-            coverInput.focus();
-            coverInput.classList.add('focus-input');
-            blockInput.classList.remove('focus-input');
+            code39Input.focus();
+            code39Input.classList.add('focus-input');
+            datamatrixInput.classList.remove('focus-input');
         }
         
         function playSound(isMatch) {
