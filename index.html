@@ -7,7 +7,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <style>
-                    #match-indicator {
+        #match-indicator {
             font-size: 1.5rem;
             font-weight: bold;
             display: none;
@@ -109,6 +109,30 @@
             code39Input.focus();
         };
         
+        // Clear field on focus/click and ensure digit-only input for Code 39
+        code39Input.addEventListener('focus', function() {
+            this.value = '';
+            hideResult();
+            resetInputHighlighting();
+            code39Input.classList.add('focus-input');
+            datamatrixInput.classList.remove('focus-input');
+        });
+        
+        code39Input.addEventListener('keypress', function(e) {
+            const char = String.fromCharCode(e.keyCode || e.which);
+            if (!/^\d$/.test(char)) {
+                e.preventDefault();
+            }
+        });
+        
+        datamatrixInput.addEventListener('focus', function() {
+            this.value = '';
+            hideResult();
+            resetInputHighlighting();
+            datamatrixInput.classList.add('focus-input');
+            code39Input.classList.remove('focus-input');
+        });
+        
         // Handle input events for Code 39
         code39Input.addEventListener('input', function() {
             // Clear previous result when entering a new Code 39 code
@@ -122,14 +146,6 @@
                 datamatrixInput.focus();
                 datamatrixInput.classList.add('focus-input');
                 code39Input.classList.remove('focus-input');
-            }
-        });
-        
-        // Ensure only digits can be entered for Code 39
-        code39Input.addEventListener('keypress', function(e) {
-            const char = String.fromCharCode(e.keyCode || e.which);
-            if (!/^\d$/.test(char)) {
-                e.preventDefault();
             }
         });
         
@@ -222,7 +238,7 @@
         function showResult(isMatch, message) {
             const matchIndicator = document.getElementById('match-indicator');
             matchIndicator.textContent = message;
-            matchIndicator.className = 'alert text-center py-3 mt-3'; // Reset classes
+            matchIndicator.className = 'alert text-center py-3 mb-4'; // Reset classes
             matchIndicator.classList.add(isMatch ? 'alert-success' : 'alert-danger');
             matchIndicator.style.display = 'block';
         }
