@@ -1,4 +1,44 @@
-<!DOCTYPE html>
+// Handle barcode scanner input
+        // Most barcode scanners add an Enter key press after scanning
+        document.addEventListener('keydown', function(e) {
+            // Only process if there's active input focus
+            const activeElement = document.activeElement;
+            
+            if (e.key === 'Enter') {
+                if (activeElement === coverInput) {
+                    e.preventDefault(); // Prevent form submission
+                    
+                    // Process the cover input
+                    const digits = coverInput.value.replace(/\D/g, '');
+                    if (digits.length >= 13) {
+                        coverInput.value = digits.substring(0, 13);
+                        
+                        // Clear blockInput to prevent data carryover
+                        blockInput.value = '';
+                        
+                        // Move focus to blockInput
+                        setTimeout(function() {
+                            blockInput.focus();
+                            blockInput.classList.add('focus-input');
+                            coverInput.classList.remove('focus-input');
+                        }, 100);
+                    }
+                } else if (activeElement === blockInput) {
+                    e.preventDefault(); // Prevent form submission
+                    
+                    // Process the block input
+                    const digits = blockInput.value.replace(/\D/g, '');
+                    if (digits.length >= 13) {
+                        blockInput.value = digits.substring(0, 13);
+                        
+                        // If both inputs have values, perform comparison
+                        if (coverInput.value && blockInput.value) {
+                            compareBarcodesHandler();
+                        }
+                    }
+                }
+            }
+        });<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -126,56 +166,33 @@
             coverInput.classList.remove('focus-input');
         });
         
-        // Handle input events for Cover
+        // Only minimal input handling here - main processing in keydown event
         coverInput.addEventListener('input', function() {
-            // Clear previous result when entering a new Cover code
             if (this.value.length === 1) {
                 hideResult();
                 resetInputHighlighting();
             }
-            
-            // Extract the digits and truncate to 13 digits for display
-            const digits = this.value.replace(/\D/g, '');
-            if (digits.length >= 13) {
-                // Truncate and format input to show only first 13 digits
-                this.value = digits.substring(0, 13);
-                blockInput.focus();
-                blockInput.classList.add('focus-input');
-                coverInput.classList.remove('focus-input');
-            }
         });
         
-        // Handle input events for Block
         blockInput.addEventListener('input', function() {
-            // Clear previous result when entering a new Block code
             if (this.value.length === 1) {
                 hideResult();
                 resetInputHighlighting();
             }
-            
-            // Extract the digits and truncate to 13 digits for display
-            const digits = this.value.replace(/\D/g, '');
-            if (digits.length >= 13) {
-                // Truncate and format input to show only first 13 digits
-                this.value = digits.substring(0, 13);
-                
-                // If both inputs have values, perform comparison
-                if (coverInput.value && blockInput.value) {
-                    compareBarcodesHandler();
-                }
-            }
         });
         
-        // Also perform comparison when Enter is pressed in either input field
+        // Also process Enter key in input fields (for manual entry)
         coverInput.addEventListener('keyup', function(e) {
-            if (e.key === 'Enter' && blockInput.value) {
-                compareBarcodesHandler();
+            if (e.key === 'Enter') {
+                // Already handled by the document keydown event
+                e.preventDefault();
             }
         });
         
         blockInput.addEventListener('keyup', function(e) {
-            if (e.key === 'Enter' && coverInput.value) {
-                compareBarcodesHandler();
+            if (e.key === 'Enter') {
+                // Already handled by the document keydown event
+                e.preventDefault();
             }
         });
         
