@@ -53,7 +53,7 @@
                     <div class="card-body">
                         <div class="form-group mb-3">
                             <label for="coverInput">Cover DataMatrix:</label>
-                            <input type="text" id="coverInput" class="form-control barcode-input cover focus-input" autocomplete="off">
+                            <input type="text" id="coverInput" class="form-control barcode-input cover focus-input" maxlength="13" autocomplete="off">
                             <div class="form-text">Scan the DataMatrix barcode from the cover</div>
                         </div>
                     </div>
@@ -67,7 +67,7 @@
                     <div class="card-body">
                         <div class="form-group mb-3">
                             <label for="blockInput">Book Block DataMatrix:</label>
-                            <input type="text" id="blockInput" class="form-control barcode-input block" autocomplete="off">
+                            <input type="text" id="blockInput" class="form-control barcode-input block" maxlength="13" autocomplete="off">
                             <div class="form-text">Scan the DataMatrix barcode from the book block</div>
                         </div>
                     </div>
@@ -134,9 +134,11 @@
                 resetInputHighlighting();
             }
             
-            // After entering a reasonable length of characters, move to Block input
-            // Most DataMatrix barcodes have at least 10 characters
-            if (this.value.length >= 10) {
+            // Extract the digits and truncate to 13 digits for display
+            const digits = this.value.replace(/\D/g, '');
+            if (digits.length >= 13) {
+                // Truncate and format input to show only first 13 digits
+                this.value = digits.substring(0, 13);
                 blockInput.focus();
                 blockInput.classList.add('focus-input');
                 coverInput.classList.remove('focus-input');
@@ -151,9 +153,16 @@
                 resetInputHighlighting();
             }
             
-            // If both inputs have values, perform comparison
-            if (coverInput.value && blockInput.value) {
-                compareBarcodesHandler();
+            // Extract the digits and truncate to 13 digits for display
+            const digits = this.value.replace(/\D/g, '');
+            if (digits.length >= 13) {
+                // Truncate and format input to show only first 13 digits
+                this.value = digits.substring(0, 13);
+                
+                // If both inputs have values, perform comparison
+                if (coverInput.value && blockInput.value) {
+                    compareBarcodesHandler();
+                }
             }
         });
         
