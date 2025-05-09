@@ -5,49 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barcode Comparison Tool</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        .scanner-container {
-            position: relative;
-            width: 100%;
-            max-width: 500px;
-            margin: 0 auto;
-            overflow: hidden;
-        }
-        #scanner-area {
-            position: relative;
-            width: 100%;
-            max-width: 500px;
-            height: 300px;
-            border: 2px solid #6c757d;
-            margin: 0 auto;
-            overflow: hidden;
-        }
-        .scanner-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.3);
-            z-index: 10;
-        }
-        .scanner-laser {
-            position: absolute;
-            width: 100%;
-            height: 1px;
-            background: rgba(255, 0, 0, 0.7);
-            z-index: 11;
-            box-shadow: 0 0 4px red;
-            animation: scan 2s infinite;
-        }
-        @keyframes scan {
-            0% { top: 0; }
-            50% { top: 100%; }
-            100% { top: 0; }
-        }
         #match-indicator {
             font-size: 1.5rem;
             font-weight: bold;
@@ -55,12 +14,23 @@
         }
         .barcode-input {
             border-width: 2px;
+            font-family: monospace;
+            font-size: 1.2rem;
         }
         .barcode-input.code39 {
             border-color: #0d6efd;
         }
         .barcode-input.datamatrix {
             border-color: #198754;
+        }
+        .comparison-box {
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .focus-input {
+            background-color: #e9f5ff !important;
         }
     </style>
 </head>
@@ -69,7 +39,7 @@
         <div class="row mb-4">
             <div class="col-12 text-center">
                 <h1>Barcode Comparison Tool</h1>
-                <p class="lead">Scan Code 39 and DataMatrix barcodes to compare the first 13 digits</p>
+                <p class="lead">Compare Code 39 and DataMatrix barcodes - first 13 digits</p>
             </div>
         </div>
 
@@ -82,11 +52,8 @@
                     <div class="card-body">
                         <div class="form-group mb-3">
                             <label for="code39Input">Code 39 Value (13 digits):</label>
-                            <div class="input-group">
-                                <input type="text" id="code39Input" class="form-control barcode-input code39" maxlength="13" pattern="[0-9]{13}">
-                                <button class="btn btn-primary" type="button" id="scanCode39Btn">Scan</button>
-                            </div>
-                            <div class="form-text">13-digit barcode value</div>
+                            <input type="text" id="code39Input" class="form-control barcode-input code39 focus-input" maxlength="13" pattern="[0-9]{13}" autocomplete="off">
+                            <div class="form-text">Scan or type the 13-digit Code 39 barcode</div>
                         </div>
                     </div>
                 </div>
@@ -99,10 +66,7 @@
                     <div class="card-body">
                         <div class="form-group mb-3">
                             <label for="datamatrixInput">DataMatrix Value:</label>
-                            <div class="input-group">
-                                <input type="text" id="datamatrixInput" class="form-control barcode-input datamatrix">
-                                <button class="btn btn-success" type="button" id="scanDatamatrixBtn">Scan</button>
-                            </div>
+                            <input type="text" id="datamatrixInput" class="form-control barcode-input datamatrix" autocomplete="off">
                             <div class="form-text">First 13 digits will be used for comparison</div>
                         </div>
                     </div>
@@ -110,180 +74,104 @@
             </div>
         </div>
 
-        <div class="row mb-4">
-            <div class="col-12 text-center">
-                <button id="compareBtn" class="btn btn-lg btn-primary">Compare Barcodes</button>
-            </div>
-        </div>
-
         <div class="row">
             <div class="col-12">
                 <div class="alert alert-info" role="alert" id="instruction-alert">
                     <h4 class="alert-heading">Instructions:</h4>
-                    <p>1. Scan or manually enter the Code 39 barcode (13 digits)</p>
-                    <p>2. Scan or manually enter the DataMatrix barcode</p>
-                    <p>3. Click "Compare Barcodes" to check if the first 13 digits match</p>
+                    <p>1. Scan or enter the Code 39 barcode (13 digits)</p>
+                    <p>2. Scan or enter the DataMatrix barcode</p>
+                    <p>3. The comparison will happen automatically after both barcodes are entered</p>
                 </div>
                 <div id="match-indicator" class="alert text-center py-3 mt-3" role="alert"></div>
             </div>
         </div>
-
-        <!-- Scanner Modal -->
-        <div class="modal fade" id="scannerModal" tabindex="-1" role="dialog" aria-labelledby="scannerModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="scannerModalLabel">Barcode Scanner</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="scanner-container">
-                            <div id="scanner-area">
-                                <div class="scanner-overlay"></div>
-                                <div class="scanner-laser"></div>
-                            </div>
-                        </div>
-                        <div class="text-center mt-3">
-                            <p id="scanner-instructions" class="lead"></p>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between">
+                    <button id="resetBtn" class="btn btn-secondary">Reset</button>
+                    <button id="focusCode39Btn" class="btn btn-outline-primary">Focus Code 39</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        let currentScanMode = null;
-        let currentScanTarget = null;
+        // Get references to input elements
+        const code39Input = document.getElementById('code39Input');
+        const datamatrixInput = document.getElementById('datamatrixInput');
+        const resetBtn = document.getElementById('resetBtn');
+        const focusCode39Btn = document.getElementById('focusCode39Btn');
         
-        // Initialize scanner when the scan buttons are clicked
-        document.getElementById('scanCode39Btn').addEventListener('click', function() {
-            startScanner('code39', 'code39Input');
-        });
+        // Set initial focus to Code 39 input
+        window.onload = function() {
+            code39Input.focus();
+        };
         
-        document.getElementById('scanDatamatrixBtn').addEventListener('click', function() {
-            startScanner('datamatrix', 'datamatrixInput');
-        });
-        
-        // Compare the barcode values when the compare button is clicked
-        document.getElementById('compareBtn').addEventListener('click', compareBarcodesHandler);
-        
-        // Also compare when Enter is pressed in either input field
-        document.getElementById('code39Input').addEventListener('keyup', function(e) {
-            if (e.key === 'Enter') compareBarcodesHandler();
-        });
-        
-        document.getElementById('datamatrixInput').addEventListener('keyup', function(e) {
-            if (e.key === 'Enter') compareBarcodesHandler();
-        });
-        
-        // Handle the scanner modal closing
-        $('#scannerModal').on('hidden.bs.modal', function() {
-            if (Quagga.initialized) {
-                Quagga.stop();
+        // Handle input events for Code 39
+        code39Input.addEventListener('input', function() {
+            // If the Code 39 has exactly 13 digits, move to DataMatrix input
+            if (this.value.length === 13 && /^\d{13}$/.test(this.value)) {
+                datamatrixInput.focus();
+                datamatrixInput.classList.add('focus-input');
+                code39Input.classList.remove('focus-input');
             }
         });
         
-        function startScanner(mode, targetId) {
-            currentScanMode = mode;
-            currentScanTarget = targetId;
-            
-            let scannerInstructions = document.getElementById('scanner-instructions');
-            if (mode === 'code39') {
-                scannerInstructions.textContent = 'Scanning Code 39 Barcode (13 digits)';
-            } else {
-                scannerInstructions.textContent = 'Scanning DataMatrix Barcode';
+        // Ensure only digits can be entered for Code 39
+        code39Input.addEventListener('keypress', function(e) {
+            const char = String.fromCharCode(e.keyCode || e.which);
+            if (!/^\d$/.test(char)) {
+                e.preventDefault();
             }
-            
-            // Show the scanner modal
-            let scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
-            scannerModal.show();
-            
-            // Initialize the scanner with appropriate settings for the barcode type
-            initializeScanner(mode);
-        }
+        });
         
-        function initializeScanner(mode) {
-            const scannerConfig = {
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector("#scanner-area"),
-                    constraints: {
-                        width: 640,
-                        height: 480,
-                        facingMode: "environment"
-                    },
-                },
-                locator: {
-                    patchSize: "medium",
-                    halfSample: true
-                },
-                numOfWorkers: 2,
-                frequency: 10,
-                decoder: {
-                    readers: mode === 'code39' ? ["code_39_reader"] : ["datamatrix_reader"]
-                },
-                locate: true
-            };
-            
-            Quagga.init(scannerConfig, function(err) {
-                if (err) {
-                    console.log(err);
-                    alert("Error initializing scanner: " + err);
-                    return;
-                }
-                
-                Quagga.initialized = true;
-                Quagga.start();
-                
-                Quagga.onDetected(function(result) {
-                    // Handle the scan result
-                    handleScanResult(result);
-                });
-            });
-        }
-        
-        function handleScanResult(result) {
-            // Extract the barcode data from the scan result
-            const code = result.codeResult.code;
-            
-            // Stop the scanner
-            Quagga.stop();
-            Quagga.initialized = false;
-            
-            // Close the scanner modal
-            let scannerModal = bootstrap.Modal.getInstance(document.getElementById('scannerModal'));
-            scannerModal.hide();
-            
-            // Update the appropriate input field
-            document.getElementById(currentScanTarget).value = code;
-            
-            // Set focus to the next input field or the compare button
-            if (currentScanTarget === 'code39Input') {
-                document.getElementById('datamatrixInput').focus();
-            } else {
-                document.getElementById('compareBtn').focus();
-            }
-            
-            // If both barcodes are scanned, automatically compare them
-            if (document.getElementById('code39Input').value && 
-                document.getElementById('datamatrixInput').value) {
+        // Handle input events for DataMatrix
+        datamatrixInput.addEventListener('input', function() {
+            // If both inputs have values, perform comparison
+            if (code39Input.value && datamatrixInput.value) {
                 compareBarcodesHandler();
             }
-        }
+        });
+        
+        // Also perform comparison when Enter is pressed in either input field
+        code39Input.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter' && datamatrixInput.value) {
+                compareBarcodesHandler();
+            }
+        });
+        
+        datamatrixInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter' && code39Input.value) {
+                compareBarcodesHandler();
+            }
+        });
+        
+        // Reset button functionality
+        resetBtn.addEventListener('click', function() {
+            code39Input.value = '';
+            datamatrixInput.value = '';
+            hideResult();
+            code39Input.focus();
+            code39Input.classList.add('focus-input');
+            datamatrixInput.classList.remove('focus-input');
+            resetInputHighlighting();
+        });
+        
+        // Focus Code 39 button functionality
+        focusCode39Btn.addEventListener('click', function() {
+            code39Input.focus();
+            code39Input.classList.add('focus-input');
+            datamatrixInput.classList.remove('focus-input');
+        });
         
         function compareBarcodesHandler() {
-            const code39Value = document.getElementById('code39Input').value.trim();
-            const datamatrixValue = document.getElementById('datamatrixInput').value.trim();
+            const code39Value = code39Input.value.trim();
+            const datamatrixValue = datamatrixInput.value.trim();
             
             // Validate inputs
             if (!code39Value || !datamatrixValue) {
-                showResult(false, "Both barcode values are required");
-                return;
+                return; // Don't show any result if both fields aren't filled
             }
             
             // Validate Code 39 input (should be exactly 13 digits)
@@ -295,7 +183,7 @@
             // Extract the first 13 digits from the DataMatrix
             const datamatrixFirst13 = datamatrixValue.replace(/\D/g, '').substring(0, 13);
             
-            // Ensure we have at least 13 digits in the DataMatrix
+            // Ensure we have at least a 13-digit string from DataMatrix
             if (datamatrixFirst13.length < 13) {
                 showResult(false, "DataMatrix must contain at least 13 digits");
                 return;
@@ -311,6 +199,16 @@
             
             // Highlight the input fields based on the match result
             highlightInputs(isMatch);
+            
+            // Play a sound based on match result
+            playSound(isMatch);
+            
+            // If it's a match, prepare for the next scan after a short delay
+            if (isMatch) {
+                setTimeout(function() {
+                    resetForNextScan();
+                }, 1500);
+            }
         }
         
         function showResult(isMatch, message) {
@@ -321,10 +219,12 @@
             matchIndicator.style.display = 'block';
         }
         
+        function hideResult() {
+            const matchIndicator = document.getElementById('match-indicator');
+            matchIndicator.style.display = 'none';
+        }
+        
         function highlightInputs(isMatch) {
-            const code39Input = document.getElementById('code39Input');
-            const datamatrixInput = document.getElementById('datamatrixInput');
-            
             // Remove previous validation classes
             code39Input.classList.remove('is-valid', 'is-invalid');
             datamatrixInput.classList.remove('is-valid', 'is-invalid');
@@ -336,6 +236,51 @@
             } else {
                 code39Input.classList.add('is-invalid');
                 datamatrixInput.classList.add('is-invalid');
+            }
+        }
+        
+        function resetInputHighlighting() {
+            code39Input.classList.remove('is-valid', 'is-invalid');
+            datamatrixInput.classList.remove('is-valid', 'is-invalid');
+        }
+        
+        function resetForNextScan() {
+            code39Input.value = '';
+            datamatrixInput.value = '';
+            hideResult();
+            resetInputHighlighting();
+            code39Input.focus();
+            code39Input.classList.add('focus-input');
+            datamatrixInput.classList.remove('focus-input');
+        }
+        
+        function playSound(isMatch) {
+            // Create an audio context
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Create an oscillator
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            // Configure the sound based on match result
+            if (isMatch) {
+                // Success sound - higher pitch, shorter
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.15);
+            } else {
+                // Error sound - lower pitch, longer
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(220, audioContext.currentTime); // A3
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.3);
             }
         }
     </script>
