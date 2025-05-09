@@ -1,47 +1,4 @@
-// Additional safeguard - clear the second input when first receives focus
-        code39Input.addEventListener('focusin', function() {
-            datamatrixInput.value = '';
-        });        // Additional event listener to intercept and handle paste events
-        document.addEventListener('paste', function(e) {
-            const activeElement = document.activeElement;
-            
-            // Let's prevent the default paste behavior and handle it ourselves
-            if (activeElement === code39Input || activeElement === datamatrixInput) {
-                e.preventDefault();
-                
-                // Get the pasted content
-                const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-                
-                // Clean the pasted text (remove CR/LF and other non-printable characters)
-                const cleanedText = pastedText.replace(/[\r\n\t\f\v]+/g, '');
-                
-                if (activeElement === code39Input) {
-                    // For code39, extract only digits and limit to 13
-                    const digits = cleanedText.replace(/\D/g, '').substring(0, 13);
-                    code39Input.value = digits;
-                    
-                    if (digits.length === 13) {
-                        code39Complete = true;
-                        
-                        // Clear second field and focus with delay
-                        datamatrixInput.value = '';
-                        setTimeout(function() {
-                            datamatrixInput.focus();
-                            datamatrixInput.classList.add('focus-input');
-                            code39Input.classList.remove('focus-input');
-                        }, 300);
-                    }
-                } else {
-                    // For datamatrix, just set the value
-                    datamatrixInput.value = cleanedText;
-                    
-                    // If both have values, compare
-                    if (code39Input.value && datamatrixInput.value) {
-                        compareBarcodesHandler();
-                    }
-                }
-            }
-        });<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -152,51 +109,19 @@
             code39Input.focus();
         };
         
-        // Flag to track if code39 input is complete
+        // Flag to track scanning state
         let code39Complete = false;
         
-        // Handle barcode scanner behavior by preventing data carryover
+        // Handle barcode scanner behavior
         document.addEventListener('keydown', function(e) {
-            // Detect Enter key, Carriage Return, or newline characters
             if (e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 10) {
                 const activeElement = document.activeElement;
                 
                 if (activeElement === code39Input) {
-                    e.preventDefault(); // Prevent form submission
-                    
-                    // Process the Code 39 input
-                    if (code39Input.value.length > 0) {
-                        // Remove any carriage returns or newlines that might be in the value
-                        let inputValue = code39Input.value.replace(/[\r\n]+/g, '');
-                        
-                        // Ensure we only take the first 13 digits
-                        const digits = inputValue.replace(/\D/g, '').substring(0, 13);
-                        code39Input.value = digits;
-                        
-                        // Only proceed if we have 13 digits
-                        if (digits.length === 13) {
-                            code39Complete = true;
-                            
-                            // Clear the datamatrix input before focusing on it
-                            // This ensures any spillover data is removed
-                            datamatrixInput.value = '';
-                            
-                            // Add a longer delay before focusing on the next field to prevent carryover
-                            setTimeout(function() {
-                                datamatrixInput.focus();
-                                datamatrixInput.classList.add('focus-input');
-                                code39Input.classList.remove('focus-input');
-                            }, 300);
-                        }
-                    }
+                    e.preventDefault();
+                    processCode39Input();
                 } else if (activeElement === datamatrixInput) {
-                    e.preventDefault(); // Prevent form submission
-                    
-                    // Remove any carriage returns or newlines
-                    let inputValue = datamatrixInput.value.replace(/[\r\n]+/g, '');
-                    datamatrixInput.value = inputValue;
-                    
-                    // If both inputs have values, perform comparison
+                    e.preventDefault();
                     if (code39Input.value && datamatrixInput.value) {
                         compareBarcodesHandler();
                     }
@@ -204,9 +129,64 @@
             }
         });
         
-        // Clear field on focus/click and ensure digit-only input for Code 39
+        // Process and validate code39 input
+        function processCode39Input() {
+            if (code39Input.value.length > 0) {
+                // Clean up the input value
+                let inputValue = code39Input.value.replace(/[\r\n]+/g, '');
+                const digits = inputValue.replace(/\D/g, '').substring(0, 13);
+                code39Input.value = digits;
+                
+                if (digits.length === 13) {
+                    code39Complete = true;
+                    datamatrixInput.value = '';
+                    
+                    setTimeout(function() {
+                        datamatrixInput.focus();
+                        datamatrixInput.classList.add('focus-input');
+                        code39Input.classList.remove('focus-input');
+                    }, 300);
+                }
+            }
+        }
+        
+        // Handle paste events
+        document.addEventListener('paste', function(e) {
+            const activeElement = document.activeElement;
+            
+            if (activeElement === code39Input || activeElement === datamatrixInput) {
+                e.preventDefault();
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                const cleanedText = pastedText.replace(/[\r\n\t\f\v]+/g, '');
+                
+                if (activeElement === code39Input) {
+                    const digits = cleanedText.replace(/\D/g, '').substring(0, 13);
+                    code39Input.value = digits;
+                    
+                    if (digits.length === 13) {
+                        code39Complete = true;
+                        datamatrixInput.value = '';
+                        
+                        setTimeout(function() {
+                            datamatrixInput.focus();
+                            datamatrixInput.classList.add('focus-input');
+                            code39Input.classList.remove('focus-input');
+                        }, 300);
+                    }
+                } else {
+                    datamatrixInput.value = cleanedText;
+                    
+                    if (code39Input.value && datamatrixInput.value) {
+                        compareBarcodesHandler();
+                    }
+                }
+            }
+        });
+        
+        // Clear field on focus and ensure digit-only input for Code 39
         code39Input.addEventListener('focus', function() {
             this.value = '';
+            datamatrixInput.value = '';
             code39Complete = false;
             hideResult();
             resetInputHighlighting();
@@ -222,55 +202,31 @@
         });
         
         datamatrixInput.addEventListener('focus', function() {
-            // Only clear this field if coming from a reset or manual click
-            // Do not clear if coming from automatic focus change after Code 39 scan
             if (!code39Complete) {
                 this.value = '';
             }
             
-            // Always reset these
             hideResult();
             resetInputHighlighting();
             datamatrixInput.classList.add('focus-input');
             code39Input.classList.remove('focus-input');
-            
-            // Reset the flag when focusing manually
-            if (!code39Complete) {
-                code39Complete = false;
-            }
         });
         
-        // Handle input events for Code 39
+        // Handle input events
         code39Input.addEventListener('input', function() {
-            // Clear previous result when entering a new Code 39 code
             if (this.value.length === 1) {
                 hideResult();
                 resetInputHighlighting();
                 code39Complete = false;
             }
-            
-            // If the Code 39 has exactly 13 digits, move to DataMatrix input
-            if (this.value.length === 13 && /^\d{13}$/.test(this.value)) {
-                code39Complete = true;
-                
-                // Add a delay before focusing on the next field
-                setTimeout(function() {
-                    datamatrixInput.focus();
-                    datamatrixInput.classList.add('focus-input');
-                    code39Input.classList.remove('focus-input');
-                }, 100);
-            }
         });
         
-        // Handle input events for DataMatrix
         datamatrixInput.addEventListener('input', function() {
-            // Clear previous result when entering a new DataMatrix code
             if (this.value.length === 1) {
                 hideResult();
                 resetInputHighlighting();
             }
             
-            // If both inputs have values, perform comparison
             if (code39Input.value && datamatrixInput.value) {
                 compareBarcodesHandler();
             }
@@ -299,45 +255,36 @@
             const code39Value = code39Input.value.trim();
             const datamatrixValue = datamatrixInput.value.trim();
             
-            // Validate inputs
             if (!code39Value || !datamatrixValue) {
-                return; // Don't show any result if both fields aren't filled
+                return;
             }
             
-            // Validate Code 39 input (should be exactly 13 digits)
             if (!/^\d{13}$/.test(code39Value)) {
                 showResult(false, "Code 39 must be exactly 13 digits");
                 return;
             }
             
-            // Extract the first 13 digits from the DataMatrix
             const datamatrixFirst13 = datamatrixValue.replace(/\D/g, '').substring(0, 13);
             
-            // Ensure we have at least a 13-digit string from DataMatrix
             if (datamatrixFirst13.length < 13) {
                 showResult(false, "DataMatrix must contain at least 13 digits");
                 return;
             }
             
-            // Compare the values
             const isMatch = code39Value === datamatrixFirst13;
             
-            // Show the result
             showResult(isMatch, isMatch ? 
                 "✓ MATCH: The barcodes match!" : 
                 "✗ NO MATCH: The barcodes do not match");
             
-            // Highlight the input fields based on the match result
             highlightInputs(isMatch);
-            
-            // Play a sound based on match result
             playSound(isMatch);
         }
         
         function showResult(isMatch, message) {
             const matchIndicator = document.getElementById('match-indicator');
             matchIndicator.textContent = message;
-            matchIndicator.className = 'alert text-center py-3 mb-4'; // Reset classes
+            matchIndicator.className = 'alert text-center py-3 mb-4';
             matchIndicator.classList.add(isMatch ? 'alert-success' : 'alert-danger');
             matchIndicator.style.display = 'block';
         }
@@ -348,11 +295,9 @@
         }
         
         function highlightInputs(isMatch) {
-            // Remove previous validation classes
             code39Input.classList.remove('is-valid', 'is-invalid');
             datamatrixInput.classList.remove('is-valid', 'is-invalid');
             
-            // Add appropriate validation classes
             if (isMatch) {
                 code39Input.classList.add('is-valid');
                 datamatrixInput.classList.add('is-valid');
@@ -368,27 +313,21 @@
         }
         
         function playSound(isMatch) {
-            // Create an audio context
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // Create an oscillator
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             
-            // Configure the sound based on match result
             if (isMatch) {
-                // Success sound - higher pitch, shorter
                 oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+                oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
                 gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
                 oscillator.start();
                 oscillator.stop(audioContext.currentTime + 0.15);
             } else {
-                // Error sound - lower pitch, longer
                 oscillator.type = 'square';
-                oscillator.frequency.setValueAtTime(220, audioContext.currentTime); // A3
+                oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
                 gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
