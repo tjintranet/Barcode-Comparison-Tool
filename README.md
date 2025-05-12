@@ -2,8 +2,6 @@
 
 A web-based application for comparing barcodes used in book manufacturing quality control. This tool allows operators to scan and compare Code 39 and DataMatrix barcodes to ensure matching components during the binding process.
 
-![Barcode Comparison Tool Screenshot](screenshot.png)
-
 ## Overview
 
 The Barcode Comparison Tool is designed for production environments where operators need to verify that the cover and book block components match before binding. The tool:
